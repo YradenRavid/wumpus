@@ -14,7 +14,7 @@ class Orientation:
         self.curr_orientation = self.possible_orientations[right_ind]
 
 
-class AgentActions:
+class AgentState:
     def __init__(self,location=(0,0), orientation = Orientation("East"), hasGold = False, hasArrow= True, isAlive = True):
         self.location = location
         self.orientation = orientation,
@@ -22,10 +22,10 @@ class AgentActions:
         self.hasArrow = hasArrow
         self.isAlive = isAlive
 
-    def trun_left(self):
+    def turn_left(self):
         self.orientation = self.orientation.turn_left()
 
-    def trun_right(self):
+    def turn_right(self):
         self.orientation = self.orientation.turn_right()
 
     def forward(self,gridWidth,gridHeight):
@@ -39,6 +39,7 @@ class AgentActions:
             case "North":
                 self.location = (self.location[0], min(gridHeight - 1, self.location[1] + 1))
     
+
 
      
 
