@@ -1,5 +1,5 @@
 import random
-from itertools import combinations
+from itertools import product
 from Environment import AgentState
 
 GRIDWIDTH = 4
@@ -23,7 +23,7 @@ class EnvironmentState:
 
     def set_pits_locations(self):
         pit_locations = []
-        for i,j in list(combinations(range(self.gridWidth),range(self.gridHeight))):
+        for i,j in list(product(range(self.gridWidth),range(self.gridHeight))):
             if i == 0 and j == 0:
                 continue
             if random.random() < self.pitProb:
@@ -31,7 +31,7 @@ class EnvironmentState:
         return pit_locations
 
     def set_single_location(self):
-        randinteger = random(1,self.gridWidth*self.gridHeight+1)
+        randinteger = random.randint(1,self.gridWidth*self.gridHeight+1)
         x_location = randinteger / self.gridWidth
         y_location = randinteger % self.gridHeight
         return (x_location,y_location)
@@ -89,6 +89,29 @@ class EnvironmentState:
             case "South":
                 return (self.agent.location[0] == self.wumpusLocation[0]) & (self.agent.location[1] < self.wumpusLocation[1])
 
+    def Visualization(self):
+        wumpusSymbol = "W" if self.wumpusAlive else "w"
+        for row in range(0,self.gridHeight):
+            for col in range(0,self.gridWidth):
+                if self.agent.location == (row,col):
+                    print("A")
+                else:
+                    print(" ")
+                if any(self.pitLocations) == (row,col):
+                    print("P")
+                else:
+                    print(" ")
+                if self.goldLocation == (row,col):
+                    print("G")
+                else:
+                    print(" ")
+                if self.wumpusLocation == (row,col):
+                    print(wumpusSymbol)
+                else:
+                    print(" ")
+            print("|")
+        print("\n")
+
 class Perceptions:
     def __init__(self, env):
         self.env = env
@@ -136,5 +159,3 @@ class Percept:
 
         
 
-class Visualization:
-    pass
