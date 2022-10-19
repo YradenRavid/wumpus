@@ -12,13 +12,16 @@ class EnvironmentState:
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
         self.pitProb = pitProb
-        self.allowClimbWithoutGold = allowClimbWithoutGold,
+        self.allowClimbWithoutGold = allowClimbWithoutGold
         self.agent = agent
         self.pitLocations = self.set_pits_locations()
+        print("self.pitLocations",self.pitLocations)
         self.terminated = terminated
         self.wumpusLocation = self.set_single_location()
+        print("self.wumpusLocation", self.wumpusLocation)
         self.wumpusAlive = wumpusAlive
         self.goldLocation = self.set_single_location()
+        print("self.goldLocation", self.goldLocation)
         self.perceptions = Perceptions(self)
 
     def set_pits_locations(self):
@@ -31,8 +34,8 @@ class EnvironmentState:
         return pit_locations
 
     def set_single_location(self):
-        randinteger = random.randint(1,self.gridWidth*self.gridHeight+1)
-        x_location = randinteger / self.gridWidth
+        randinteger = random.randint(1,self.gridWidth*self.gridHeight-1)
+        x_location = int(randinteger / self.gridWidth)
         y_location = randinteger % self.gridHeight
         return (x_location,y_location)
     
@@ -44,9 +47,10 @@ class EnvironmentState:
             case "Forward": 
                 old_location = self.agent.location
                 self.agent.forward(self.gridWidth,self.gridHeight)
-                isDead = (self.agent.location == self.wumpusLocation) & self.wumpusAlive
-                isDead = isDead or (self.agent.location == any(self.pitLocations))
+                isDead = (self.agent.location == self.wumpusLocation) and self.wumpusAlive
+                isDead = isDead or (self.agent.location in self.pitLocations)
                 self.agent.isAlive = not isDead
+                self.terminated = isDead
                 return Percept(self.agent.location, self.perceptions,bump= old_location == self.agent.location,isTerminated=isDead,reward= -1 if self.agent.isAlive else -1001)
             
             case "TrunLeft": 
@@ -61,7 +65,9 @@ class EnvironmentState:
                 if not self.wumpusAlive:
                     return Percept(self.agent.location, self.perceptions,reward= -1)
                 else:
-                    self.wumpusAlive = ~(self.wumpusInLineOfFire & self.agent.hasArrow) &  self.wumpusAlive
+                    self.wumpusAlive = not(self.wumpusInLineOfFire() and self.agent.hasArrow) and self.wumpusAlive
+                    if not self.wumpusAlive:
+                        print("Wumpus just killed!")
                 if self.agent.hasArrow:
                     self.agent.hasArrow = False
                     return Percept(self.agent.location, self.perceptions, scream= False if self.wumpusAlive else True ,reward= -11)
@@ -74,43 +80,47 @@ class EnvironmentState:
             
             case "Climb": 
                 inStartLocation = self.agent.location == (0,0)
-                success = self.agent.hasGold & inStartLocation
-                isTerminated = success | (self.allowClimbWithoutGold & inStartLocation)
-                return Percept(self.agent.location, self.perceptions, isTerminated=isTerminated, reward= 999 if success else -1)
+                success = self.agent.hasGold and inStartLocation
+                if success:
+                    print("You Won!")
+                self.terminated = success or (self.allowClimbWithoutGold and inStartLocation)
+                return Percept(self.agent.location, self.perceptions, isTerminated=self.terminated, reward= 999 if success else -1)
     
     def wumpusInLineOfFire(self):
         match self.agent.orientation.curr_orientation:
             case "West":
-                return (self.agent.location[0] > self.wumpusLocation[0]) & (self.agent.location[1] == self.wumpusLocation[1])
+                return (self.agent.location[0] == self.wumpusLocation[0]) and (self.agent.location[1] > self.wumpusLocation[1])
             case "East":
-                return (self.agent.location[0] < self.wumpusLocation[0]) & (self.agent.location[1] == self.wumpusLocation[1])
+                return (self.agent.location[0] == self.wumpusLocation[0]) and (self.agent.location[1] < self.wumpusLocation[1])
             case "South":
-                return (self.agent.location[0] == self.wumpusLocation[0]) & (self.agent.location[1] > self.wumpusLocation[1])
-            case "South":
-                return (self.agent.location[0] == self.wumpusLocation[0]) & (self.agent.location[1] < self.wumpusLocation[1])
+                return (self.agent.location[0] > self.wumpusLocation[0]) and (self.agent.location[1] == self.wumpusLocation[1])
+            case "North":
+                return (self.agent.location[0] < self.wumpusLocation[0]) and (self.agent.location[1] == self.wumpusLocation[1])
 
     def Visualization(self):
         wumpusSymbol = "W" if self.wumpusAlive else "w"
-        for row in range(0,self.gridHeight):
+        gameboard_string = ""
+        for row in reversed(range(self.gridHeight)):
             for col in range(0,self.gridWidth):
                 if self.agent.location == (row,col):
-                    print("A")
+                    gameboard_string+="A"
                 else:
-                    print(" ")
-                if any(self.pitLocations) == (row,col):
-                    print("P")
+                    gameboard_string+=" "
+                if (row,col) in self.pitLocations:
+                    gameboard_string+="P"
                 else:
-                    print(" ")
+                    gameboard_string+=" "
                 if self.goldLocation == (row,col):
-                    print("G")
+                    gameboard_string+="G"
                 else:
-                    print(" ")
+                    gameboard_string+=" "
                 if self.wumpusLocation == (row,col):
-                    print(wumpusSymbol)
+                    gameboard_string+=wumpusSymbol
                 else:
-                    print(" ")
-            print("|")
-        print("\n")
+                    gameboard_string+=" "
+                gameboard_string+="|"
+            gameboard_string+="\n"
+        print(gameboard_string)
 
 class Perceptions:
     def __init__(self, env):
@@ -131,12 +141,12 @@ class Perceptions:
         return cells
 
     def isStench(self, agent_location):
-        if any(Perceptions.adjacentCells([self.env.wumpusLocation])) == agent_location:
+        if agent_location in Perceptions.adjacentCells([self.env.wumpusLocation]):
             return True
         return False
     
     def isBreeze(self,agent_location):
-        if any(Perceptions.adjacentCells(self.env.pitLocations)) == agent_location:
+        if agent_location in Perceptions.adjacentCells(self.env.pitLocations):
             return True
         return False
 
@@ -147,7 +157,7 @@ class Perceptions:
 
 
 class Percept:
-    def __init__(self, agent_location, perceptions ,bump=False, scream=False,isTerminated=False, reward= -1):
+    def __init__(self, agent_location, perceptions ,bump=False, scream=False,isTerminated=False, reward= 0):
         self.stench = perceptions.isStench(agent_location)
         self.breeze = perceptions.isBreeze(agent_location)
         self.glitter = perceptions.isGlitter(agent_location)
@@ -155,6 +165,9 @@ class Percept:
         self.scream = scream
         self.isTerminated = isTerminated 
         self.reward = reward
+
+    def __str__(self):
+        return "stench: {}, breeze: {}, glitter: {}, bump: {}, scream: {}, isTerminated: {}, reward: {}".format(self.stench,self.breeze,self.glitter,self.bump,self.scream,self.isTerminated,self.reward)
 
 
         

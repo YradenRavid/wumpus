@@ -2,8 +2,8 @@ import random
 
 class Agent:
     
-    def next_action(self,percept):
-        match random.randint(0,6):
+    def next_action(percept):
+        match random.randint(0,5):
             case 0: return "Forward"
             case 1: return "TrunLeft"
             case 2: return "TrunRight"
