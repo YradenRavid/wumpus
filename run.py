@@ -6,10 +6,12 @@ def RunGame():
     print("Board Intilization:")
     env.Visualization()
     perc = Percept(env.agent.location, env.perceptions)
+    print("Percept: ", perc)
+    agent = Agent()
     total_reward = 0
     while not env.terminated: 
         print("curr orientation: ",env.agent.orientation.curr_orientation)
-        action = Agent.next_action(percept=perc,agent_orientation=env.agent.orientation.curr_orientation)
+        action = agent.next_action(percept=perc,agent_orientation=env.agent.orientation.curr_orientation)
         print("Action: ", action)
         perc = env.ApplyAction(action)
         env.Visualization()

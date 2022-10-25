@@ -9,9 +9,9 @@ class Agent:
     
     def next_action(self,percept,agent_orientation):
         if not percept.agent_location in self.safe_locations:
-            self.safe_locations.appned(percept.agent_location)
+            self.safe_locations.append(percept.agent_location)
 
-        if percept.glitter:
+        if percept.glitter and not self.hasGold:
             self.hasGold = True
             graph = ShotestPath.safe_locations_to_graph(self.safe_locations)
             self.escape_plan = ShotestPath.bfs_escape_plan(graph,percept.agent_location,(0,0))
@@ -37,7 +37,7 @@ class Agent:
 class ShotestPath:
 
     @staticmethod
-    def fastest_turn(curr_orientation,next_orientation):
+    def which_turn(curr_orientation,next_orientation):
         if curr_orientation == next_orientation:
             return "Forward"
         
@@ -52,7 +52,7 @@ class ShotestPath:
             right_ind = (right_ind - 1) % len(possible_orientations)
             right_orientation = possible_orientations[right_ind]
             if right_orientation == next_orientation:
-                return "TrunLeft"
+                return "TrunRight"
 
     @staticmethod
     def calc_next_step(agent_location,agent_orientation,escape_plan):
@@ -65,7 +65,7 @@ class ShotestPath:
             next_orientation = "West"
         else:
             next_orientation = "East"
-        return ShotestPath.fastest_turn(agent_orientation,next_orientation)
+        return ShotestPath.which_turn(agent_orientation,next_orientation)
 
     @staticmethod
     def find_neighbors(location,safe_locations):

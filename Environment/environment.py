@@ -7,7 +7,7 @@ GRIDHEIGHT = 4
 
 class EnvironmentState:
 
-    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0,
+    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0.2,
                     allowClimbWithoutGold=False,agent=AgentState(),terminated=False,wumpusAlive=True):
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
@@ -40,6 +40,10 @@ class EnvironmentState:
         return (x_location,y_location)
     
     def ApplyAction(self, action):
+        
+        if self.agent.hasGold:
+            self.goldLocation = self.agent.location
+
         if self.terminated:
             return Percept(self.agent.location, self.perceptions, isTerminated=True,reward= 0)
         match action:
@@ -47,6 +51,8 @@ class EnvironmentState:
             case "Forward": 
                 old_location = self.agent.location
                 self.agent.forward(self.gridWidth,self.gridHeight)
+                if self.agent.hasGold:
+                    self.goldLocation = self.agent.location
                 isDead = (self.agent.location == self.wumpusLocation) and self.wumpusAlive
                 isDead = isDead or (self.agent.location in self.pitLocations)
                 self.agent.isAlive = not isDead
