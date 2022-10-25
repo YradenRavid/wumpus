@@ -7,7 +7,7 @@ GRIDHEIGHT = 4
 
 class EnvironmentState:
 
-    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0.2,
+    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0,
                     allowClimbWithoutGold=False,agent=AgentState(),terminated=False,wumpusAlive=True):
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
@@ -165,6 +165,7 @@ class Percept:
         self.scream = scream
         self.isTerminated = isTerminated 
         self.reward = reward
+        self.agent_location = agent_location
 
     def __str__(self):
         return "stench: {}, breeze: {}, glitter: {}, bump: {}, scream: {}, isTerminated: {}, reward: {}".format(self.stench,self.breeze,self.glitter,self.bump,self.scream,self.isTerminated,self.reward)

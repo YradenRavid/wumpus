@@ -9,7 +9,7 @@ def RunGame():
     total_reward = 0
     while not env.terminated: 
         print("curr orientation: ",env.agent.orientation.curr_orientation)
-        action = Agent.next_action(percept=perc)
+        action = Agent.next_action(percept=perc,agent_orientation=env.agent.orientation.curr_orientation)
         print("Action: ", action)
         perc = env.ApplyAction(action)
         env.Visualization()
