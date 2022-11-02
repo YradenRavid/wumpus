@@ -18,6 +18,10 @@ def RunGame():
         print("Percept: ", perc)
         total_reward += perc.reward
         print("Total Reward: ", total_reward)
+    return total_reward
         
 if __name__ == "__main__":
-    RunGame()
+    total_reward = 0
+    for i in range(1000):
+        total_reward+= RunGame()
+    print("Average Score:", total_reward/1000)

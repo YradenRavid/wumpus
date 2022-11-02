@@ -11,6 +11,7 @@ class Agent:
         self.hasGold = False
         self.safe_locations = []
         self.escape_plan = []
+        self.next_location = (0,0)
         # belief state variables:
         self.stench_locations = []
         self.breeze_locations = []
@@ -59,7 +60,10 @@ class Agent:
                 return "Shoot"
 
         if percept.breeze:
-            pass
+            self.breeze_locations.append(percept.agent_location)
+            pit_prob = {}
+            for next_possible_step in next_possible_steps:
+                pit_prob[next_possible_step] = self.calc_pits_prob(next_possible_step,self.breeze_locations)
         
         if percept.glitter and not self.hasGold:
             self.hasGold = True
@@ -92,15 +96,17 @@ class Agent:
             print(self.safe_locations)
             return ShotestPath.calc_next_step_escape(percept.agent_location,agent_orientation,self.escape_plan)
         
-        if min(dying_prob.values()) == 0:
-            next_loc = min(dying_prob, key=dying_prob.get)
-            for k,v in dying_prob.items():
-                if k not in self.safe_locations and v==0:
-                    next_loc = k
-            print("next_loc",next_loc)
-            return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,next_loc)
+        if self.next_location != percept.agent_location:
+            return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,self.next_location)
 
-        return "Forward"
+        next_possible_locations = [loc for loc,prob in dying_prob.items() if prob==0 and loc not in self.safe_locations]
+        if next_possible_locations:
+            self.next_location = random.choice(next_possible_locations)
+        else:
+            self.next_location = random.choice([loc for loc,prob in dying_prob.items() if prob==0])
+        print("next_location:",self.next_location)
+        return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,self.next_location)
+    
     
     def adjacentCells(self,locations):
         cells = []
@@ -149,6 +155,10 @@ class Agent:
             print("Wumpus location Found!")
             self.Wumpus_loc = next(iter(self.Wumpus_prob))
             print(self.Wumpus_loc) 
+
+    def calc_pits_prob(self, next_possible_steps):
+        
+
     
 
 
