@@ -1,4 +1,9 @@
+from pomegranate import *
+from itertools import product
+
 import random
+from Environment.constants import *
+from Agent.PathUtils import ShotestPath
 
 
 class Agent:
@@ -6,11 +11,56 @@ class Agent:
         self.hasGold = False
         self.safe_locations = []
         self.escape_plan = []
+        # belief state variables:
+        self.stench_locations = []
+        self.breeze_locations = []
+        self.scream_heard = False
+        self.next_steps_risks = []
+        self.Wumpus_loc = None
+        self.Wumpus_prob = {}
+        self.has_arrow = True
+        self.just_shot = False
+        self.location_with_no_wumpus = []
+
     
     def next_action(self,percept,agent_orientation):
+        
+        next_possible_steps = self.find_neighbors([percept.agent_location])
+        print("next_possible_steps: ",next_possible_steps)
+        
+        if percept.scream:
+            print("Scream was heard")
+            self.scream_heard = True
+            self.Wumpus_prob = {}
+
+        if self.just_shot and not self.scream_heard:
+            self.just_shot = False
+            # update safe location after shoot
+            match agent_orientation:
+                case "West":
+                    self.location_with_no_wumpus.extend([(percept.agent_location[0],i) for i in range(percept.agent_location[1]+1,GRIDWIDTH)])
+                case "East":
+                    self.location_with_no_wumpus.extend([(percept.agent_location[0],i) for i in range(percept.agent_location[1])])
+                case "South":
+                    self.location_with_no_wumpus.extend([(i,percept.agent_location[1]) for i in range(percept.agent_location[0]+1,GRIDHEIGHT)])
+                case "North":
+                    self.location_with_no_wumpus.extend([(i,percept.agent_location[1]) for i in range(percept.agent_location[0])])
+
         if not percept.agent_location in self.safe_locations:
             self.safe_locations.append(percept.agent_location)
+            self.location_with_no_wumpus.append(percept.agent_location)
 
+        if percept.stench and not self.Wumpus_loc and not self.scream_heard:
+            self.stench_locations.append(percept.agent_location)
+            self.calc_wumpus_prob()
+            if self.should_shoot():
+                self.has_arrow = False
+                self.just_shot = True
+                return "Shoot"
+
+        if percept.breeze:
+            pass
+        
         if percept.glitter and not self.hasGold:
             self.hasGold = True
             graph = ShotestPath.safe_locations_to_graph(self.safe_locations)
@@ -21,101 +71,85 @@ class Agent:
             print(self.safe_locations)
             return "Grab"
         
-        if self.hasGold and (percept.agent_location == (0,0)):
-            return "Climb"
-        
         if self.escape_plan:
-            return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,self.escape_plan)
+            if percept.agent_location == (0,0):
+                return "Climb"
+            return ShotestPath.calc_next_step_escape(percept.agent_location,agent_orientation,self.escape_plan)
 
-        match random.randint(0,3):
-            case 0: return "Forward"
-            case 1: return "TrunLeft"
-            case 2: return "TrunRight"
-            case 3: return "Shoot"
-    
+        dying_prob = {}
+        for next_possible_step in next_possible_steps:
+            dying_prob[next_possible_step] = self.Wumpus_prob[next_possible_step] if next_possible_step in self.Wumpus_prob.keys() else 0
 
-class ShotestPath:
-
-    @staticmethod
-    def which_turn(curr_orientation,next_orientation):
-        if curr_orientation == next_orientation:
-            return "Forward"
+        print("dying_prob:",dying_prob)
+        print("min:",min(dying_prob.values()))
+        if min(dying_prob.values()) > 0.5:
+            graph = ShotestPath.safe_locations_to_graph(self.safe_locations)
+            self.escape_plan = ShotestPath.bfs_escape_plan(graph,percept.agent_location,(0,0))
+            print("Too risky - climbing out without gold")
+            print("That's the escape plan:")
+            print(self.escape_plan)
+            print("Safe locations:")
+            print(self.safe_locations)
+            return ShotestPath.calc_next_step_escape(percept.agent_location,agent_orientation,self.escape_plan)
         
-        possible_orientations = ["East","North","West","South"]
-        left_ind = possible_orientations.index(curr_orientation)
-        right_ind = left_ind
-        for i in range(len(possible_orientations)):
-            left_ind = (left_ind + 1) % len(possible_orientations)
-            left_orientation = possible_orientations[left_ind]
-            if left_orientation == next_orientation:
-                return "TrunLeft"
-            right_ind = (right_ind - 1) % len(possible_orientations)
-            right_orientation = possible_orientations[right_ind]
-            if right_orientation == next_orientation:
-                return "TrunRight"
+        if min(dying_prob.values()) == 0:
+            next_loc = min(dying_prob, key=dying_prob.get)
+            for k,v in dying_prob.items():
+                if k not in self.safe_locations and v==0:
+                    next_loc = k
+            print("next_loc",next_loc)
+            return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,next_loc)
 
-    @staticmethod
-    def calc_next_step(agent_location,agent_orientation,escape_plan):
-        next_location = escape_plan[escape_plan.index(agent_location) + 1]
-        if next_location[0] < agent_location[0]:
-            next_orientation = "South"
-        elif next_location[0] > agent_location[0]:
-            next_orientation = "North"
-        elif next_location[1] < agent_location[1]:
-            next_orientation = "West"
-        else:
-            next_orientation = "East"
-        return ShotestPath.which_turn(agent_orientation,next_orientation)
-
-    @staticmethod
-    def find_neighbors(location,safe_locations):
+        return "Forward"
+    
+    def adjacentCells(self,locations):
         cells = []
-        if (location[0]-1,location[1]) in safe_locations:
-            cells.append((location[0]-1,location[1]))
-        if (location[0],location[1]-1) in safe_locations:
-            cells.append((location[0],location[1]-1))
-        if (location[0]+1,location[1]) in safe_locations:
-            cells.append((location[0]+1,location[1]))
-        if (location[0],location[1]+1) in safe_locations:
-            cells.append((location[0],location[1]+1))
+        for location in locations:
+            if (location[0] > 0) and (location[1] > 0):
+                    cells.append((location[0]-1,location[1]))
+            if (location[1] > 0) and (location[1] > 0):
+                    cells.append((location[0],location[1]-1))
+            if location[0] < GRIDWIDTH - 1:
+                    cells.append((location[0]+1,location[1]))
+            if location[1] < GRIDHEIGHT - 1:
+                    cells.append((location[0],location[1]+1))
         return cells
 
-    @staticmethod
-    def safe_locations_to_graph(safe_locations):
-        graph = {}
-        for location in safe_locations:
-           graph[location] = ShotestPath.find_neighbors(location,safe_locations)
-        return graph
+    def find_neighbors(self,locations):
+        cells = []
+        for location in locations:
+            if location[0] > 0:
+                    cells.append((location[0]-1,location[1]))
+            if location[1] > 0:
+                    cells.append((location[0],location[1]-1))
+            if location[0] < GRIDWIDTH - 1:
+                    cells.append((location[0]+1,location[1]))
+            if location[1] < GRIDHEIGHT - 1:
+                    cells.append((location[0],location[1]+1))
+        return cells
 
-    @staticmethod
-    def bfs_escape_plan(graph, curr_node, end_node):
-        path_list = [[curr_node]]
-        path_index = 0
-        # To keep track of previously visited nodes
-        previous_nodes = {curr_node}
-        if curr_node == end_node:
-            return path_list[0]
+    def should_shoot(self):
+        if not self.has_arrow:
+            return False
+        if min(self.Wumpus_prob.values()) > 0.3:
+            return True
             
-        while path_index < len(path_list):
-            current_path = path_list[path_index]
-            last_node = current_path[-1]
-            next_nodes = graph[last_node]
-            # Search goal node
-            if end_node in next_nodes:
-                current_path.append(end_node)
-                return current_path
-            # Add new paths
-            for next_node in next_nodes:
-                if not next_node in previous_nodes:
-                    new_path = current_path[:]
-                    new_path.append(next_node)
-                    path_list.append(new_path)
-                    # To avoid backtracking
-                    previous_nodes.add(next_node)
-            # Continue to next path in list
-            path_index += 1
-        # No path is found
-        print("No path is found")
-        return []
+    def calc_wumpus_prob(self):
+        possible_wumpus = set([(x,y) for x,y in list(product(range(GRIDWIDTH),range(GRIDHEIGHT))) if x or y ])
+        print("stench_locations:",self.stench_locations)
+        for stench_loc in self.stench_locations:
+            possible_wumpus1 = self.adjacentCells([stench_loc])
+            possible_wumpus1 = set(possible_wumpus1) - set(self.location_with_no_wumpus)
+            possible_wumpus = possible_wumpus.intersection(possible_wumpus1)
+        print("possible_wumpus:",possible_wumpus)
+        self.Wumpus_prob = {loc: 1/(len(possible_wumpus)) for loc in possible_wumpus}
+        print("Wumpus_prob:")
+        print(self.Wumpus_prob)
+        if 1 in self.Wumpus_prob.values() and not self.Wumpus_loc:
+            print("Wumpus location Found!")
+            self.Wumpus_loc = next(iter(self.Wumpus_prob))
+            print(self.Wumpus_loc) 
+    
+
 
     

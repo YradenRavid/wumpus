@@ -1,14 +1,12 @@
 import random
 from itertools import product
 from Environment import AgentState
-
-GRIDWIDTH = 4
-GRIDHEIGHT = 4
+from Environment.constants import *
 
 class EnvironmentState:
 
-    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0.2,
-                    allowClimbWithoutGold=False,agent=AgentState(),terminated=False,wumpusAlive=True):
+    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0,
+                    allowClimbWithoutGold=True,agent=AgentState(),terminated=False,wumpusAlive=True):
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
         self.pitProb = pitProb
