@@ -5,7 +5,7 @@ from Environment.constants import *
 
 class EnvironmentState:
 
-    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0,
+    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0.2,
                     allowClimbWithoutGold=True,agent=AgentState(),terminated=False,wumpusAlive=True):
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
