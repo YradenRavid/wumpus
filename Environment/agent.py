@@ -1,6 +1,11 @@
 
 class Orientation:
-    def __init__(self,curr_orientation):
+    def __new__(cls,curr_orientation, *args, **kwargs):
+        print("Creating instance")
+        return super(Orientation, cls).__new__(cls, *args, **kwargs)
+
+    def __init__(self, curr_orientation, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.possible_orientations = ["East","North","West","South"]
         self.curr_orientation = curr_orientation
         
@@ -16,7 +21,14 @@ class Orientation:
 
 
 class AgentState:
+    def __new__(cls):
+        print("Creating instance")
+        return super(AgentState, cls).__new__(cls)
+
     def __init__(self,location=(0,0), orientation = Orientation("East"), hasGold = False, hasArrow= True, isAlive = True):
+        self.reset(location, orientation, hasGold, hasArrow, isAlive)
+    
+    def reset(self,location, orientation, hasGold, hasArrow, isAlive):
         self.location = location
         self.orientation = orientation
         self.hasGold = hasGold

@@ -4,14 +4,17 @@ from Environment import AgentState
 from Environment.constants import *
 
 class EnvironmentState:
-
-    def __init__(self,gridWidth=GRIDWIDTH,gridHeight=GRIDHEIGHT,pitProb=0.2,
-                    allowClimbWithoutGold=True,agent=AgentState(),terminated=False,wumpusAlive=True):
-        self.gridWidth = gridWidth
-        self.gridHeight = gridHeight
+    def __new__(cls):
+         print("Creating instance")
+         return super(EnvironmentState, cls).__new__(cls)
+    
+    def __init__(self,pitProb=0.2,allowClimbWithoutGold=True,terminated=False,wumpusAlive=True):
+        self.reset(pitProb,allowClimbWithoutGold,terminated,wumpusAlive)
+    
+    def reset(self,pitProb,allowClimbWithoutGold,terminated,wumpusAlive):
         self.pitProb = pitProb
         self.allowClimbWithoutGold = allowClimbWithoutGold
-        self.agent = agent
+        self.agent = AgentState()
         self.pitLocations = self.set_pits_locations()
         print("self.pitLocations",self.pitLocations)
         self.terminated = terminated
@@ -24,7 +27,7 @@ class EnvironmentState:
 
     def set_pits_locations(self):
         pit_locations = []
-        for i,j in list(product(range(self.gridWidth),range(self.gridHeight))):
+        for i,j in list(product(range(GRIDWIDTH),range(GRIDHEIGHT))):
             if i == 0 and j == 0:
                 continue
             if random.random() < self.pitProb:
@@ -32,9 +35,9 @@ class EnvironmentState:
         return pit_locations
 
     def set_single_location(self):
-        randinteger = random.randint(1,self.gridWidth*self.gridHeight-1)
-        x_location = int(randinteger / self.gridWidth)
-        y_location = randinteger % self.gridHeight
+        randinteger = random.randint(1,GRIDWIDTH*GRIDHEIGHT-1)
+        x_location = int(randinteger / GRIDWIDTH)
+        y_location = randinteger % GRIDHEIGHT
         return (x_location,y_location)
     
     def ApplyAction(self, action):
@@ -48,7 +51,7 @@ class EnvironmentState:
             
             case "Forward": 
                 old_location = self.agent.location
-                self.agent.forward(self.gridWidth,self.gridHeight)
+                self.agent.forward(GRIDWIDTH,GRIDHEIGHT)
                 if self.agent.hasGold:
                     self.goldLocation = self.agent.location
                 isDead = (self.agent.location == self.wumpusLocation) and self.wumpusAlive
@@ -104,8 +107,8 @@ class EnvironmentState:
     def Visualization(self):
         wumpusSymbol = "W" if self.wumpusAlive else "w"
         gameboard_string = ""
-        for row in reversed(range(self.gridHeight)):
-            for col in range(0,self.gridWidth):
+        for row in reversed(range(GRIDHEIGHT)):
+            for col in range(0,GRIDWIDTH):
                 if self.agent.location == (row,col):
                     gameboard_string+="A"
                 else:
@@ -124,10 +127,18 @@ class EnvironmentState:
                     gameboard_string+=" "
                 gameboard_string+="|"
             gameboard_string+="\n"
-        print(gameboard_string)
+        return gameboard_string
 
 class Perceptions:
-    def __init__(self, env):
+    def __new__(cls, env, *args, **kwargs):
+         print("Creating instance")
+         return super(Perceptions, cls).__new__(cls, *args, **kwargs)
+
+    def __init__(self, env, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reset(env)
+    
+    def reset(self,env):
         self.env = env
         
     @staticmethod

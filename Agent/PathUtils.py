@@ -22,8 +22,10 @@ class ShotestPath:
 
     @staticmethod
     def calc_next_step_escape(agent_location,agent_orientation,escape_plan):
-        next_location = escape_plan[escape_plan.index(agent_location) + 1]
-        return ShotestPath.calc_next_step(agent_location,agent_orientation,next_location)
+        if agent_location != (0,0):
+            next_location = escape_plan[escape_plan.index(agent_location) + 1]
+            return ShotestPath.calc_next_step(agent_location,agent_orientation,next_location)
+        return "Climb"
 
     @staticmethod
     def calc_next_step(agent_location,agent_orientation,next_location):

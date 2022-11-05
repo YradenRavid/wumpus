@@ -6,7 +6,14 @@ from Agent.PathUtils import ShotestPath
 
 
 class Agent:
+    def __new__(cls):
+         print("Creating instance")
+         return super(Agent, cls).__new__(cls)
+
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         self.hasGold = False
         self.safe_locations = []
         self.escape_plan = []
@@ -41,14 +48,15 @@ class Agent:
             # update safe location after shoot
             match agent_orientation:
                 case "West":
-                    self.location_with_no_wumpus.extend([(percept.agent_location[0],i) for i in range(percept.agent_location[1]+1,GRIDWIDTH)])
-                case "East":
                     self.location_with_no_wumpus.extend([(percept.agent_location[0],i) for i in range(percept.agent_location[1])])
+                case "East":
+                    self.location_with_no_wumpus.extend([(percept.agent_location[0],i) for i in range(percept.agent_location[1]+1,GRIDWIDTH)])
                 case "South":
-                    self.location_with_no_wumpus.extend([(i,percept.agent_location[1]) for i in range(percept.agent_location[0]+1,GRIDHEIGHT)])
-                case "North":
                     self.location_with_no_wumpus.extend([(i,percept.agent_location[1]) for i in range(percept.agent_location[0])])
-
+                case "North":
+                    self.location_with_no_wumpus.extend([(i,percept.agent_location[1]) for i in range(percept.agent_location[0]+1,GRIDHEIGHT)])
+            print("After shootong safe locations with no wumpus:", self.location_with_no_wumpus)
+        
         if not percept.agent_location in self.safe_locations:
             self.safe_locations.append(percept.agent_location)
             self.location_with_no_wumpus.append(percept.agent_location)
@@ -58,6 +66,7 @@ class Agent:
             self.stench_locations.append(percept.agent_location)
             self.calc_wumpus_prob()
             if self.should_shoot():
+                # TODO: match orientation to shoot
                 self.has_arrow = False
                 self.just_shot = True
                 return "Shoot"
@@ -100,7 +109,7 @@ class Agent:
 
         print("dying_prob:",dying_prob)
         print("min:",min(dying_prob.values()))
-        if min(dying_prob.values()) > 0.5:
+        if min(dying_prob.values()) >= 0.5:
             graph = ShotestPath.safe_locations_to_graph(self.safe_locations)
             self.escape_plan = ShotestPath.bfs_escape_plan(graph,percept.agent_location,(0,0))
             print("Too risky - climbing out without gold")
@@ -114,11 +123,17 @@ class Agent:
         if next_possible_locations:
             self.next_location = random.choice(next_possible_locations) 
         else:
-            zero_dying_prob_next_loc = [loc for loc,prob in dying_prob.items() if prob==0]
-            if zero_dying_prob_next_loc:
-                self.next_location = random.choice(zero_dying_prob_next_loc)
-            else: 
-                self.next_location = min(dying_prob, key=dying_prob.get)
+            risk_prob = random.random()
+            if risk_prob < 0.9:
+                print("Took no risk, risk_prob=",risk_prob)
+                zero_dying_prob_next_loc = [loc for loc,prob in dying_prob.items() if prob==0]
+                if zero_dying_prob_next_loc:
+                    self.next_location = random.choice(zero_dying_prob_next_loc)
+                else: 
+                    self.next_location = min(dying_prob, key=dying_prob.get)
+            else:
+                print("Taking a risk, risk_prob=",risk_prob)
+                random.choice([step for step in next_possible_steps if dying_prob[step] < 0.5])
         print("next_location:",self.next_location)
         return ShotestPath.calc_next_step(percept.agent_location,agent_orientation,self.next_location)
     
@@ -126,14 +141,16 @@ class Agent:
     def adjacentCells(self,locations):
         cells = []
         for location in locations:
-            if (location[0] > 0) and (location[1] > 0):
+            if (location[0] > 0):
                     cells.append((location[0]-1,location[1]))
-            if (location[1] > 0) and (location[1] > 0):
+            if (location[1] > 0):
                     cells.append((location[0],location[1]-1))
             if location[0] < GRIDWIDTH - 1:
                     cells.append((location[0]+1,location[1]))
             if location[1] < GRIDHEIGHT - 1:
                     cells.append((location[0],location[1]+1))
+        if (0,0) in cells:
+            cells.pop(cells.index((0,0)))
         return cells
 
     def find_neighbors(self,locations):
@@ -157,15 +174,16 @@ class Agent:
             
     def calc_wumpus_prob(self):
         possible_wumpus = set([(x,y) for x,y in list(product(range(GRIDWIDTH),range(GRIDHEIGHT))) if x or y ])
-        print("stench_locations:",self.stench_locations)
+        # print("stench_locations:",set(self.stench_locations))
+        print("self.location_with_no_wumpus:",self.location_with_no_wumpus)
         for stench_loc in self.stench_locations:
             possible_wumpus1 = self.adjacentCells([stench_loc])
             possible_wumpus1 = set(possible_wumpus1) - set(self.location_with_no_wumpus)
             possible_wumpus = possible_wumpus.intersection(possible_wumpus1)
-        print("possible_wumpus:",possible_wumpus)
+        # print("possible_wumpus:",possible_wumpus)
         self.Wumpus_prob = {loc: 1/(len(possible_wumpus)) for loc in possible_wumpus}
-        print("Wumpus_prob:")
-        print(self.Wumpus_prob)
+        # print("Wumpus_prob:")
+        # print(self.Wumpus_prob)
         if 1 in self.Wumpus_prob.values() and not self.Wumpus_loc:
             print("Wumpus location Found!")
             self.Wumpus_loc = next(iter(self.Wumpus_prob))
@@ -173,37 +191,37 @@ class Agent:
 
     def calc_breeze_prob(self):
         possible_pits = set()
-        print("breeze_locations:",self.breeze_locations)
-        print("location_with_no_pit:", self.location_with_no_pit)
+        # print("breeze_locations:",self.breeze_locations)
+        # print("location_with_no_pit:", self.location_with_no_pit)
         for breeze_loc in self.breeze_locations:
             possible_pits1 = self.adjacentCells([breeze_loc])
             possible_pits1 = set(possible_pits1) - set(self.location_with_no_pit)
             possible_pits = possible_pits.union(possible_pits1)
-        print("possible_pits",possible_pits)
+        # print("possible_pits",possible_pits)
         possible_pits_combinations = []
         Nmax = len(possible_pits)
         for i in range(Nmax):
             for pit_combination in combinations(list(possible_pits),i+1):
-                print("check validation for pit_combination:",pit_combination)
-                possible_breeze = self.adjacentCells(list(pit_combination))
-                print("possible_breeze: {} for pit_combination".format(possible_breeze))
-                print("self.breeze_locations",self.breeze_locations)
-                if (set(self.breeze_locations) - set(possible_breeze)): # exsit breeze with no possible breeze
+                # print("check validation for pit_combination:",pit_combination)
+                possible_breeze = self.find_neighbors(list(pit_combination))
+                # print("possible_breeze: {} for pit_combination".format(possible_breeze))
+                # print("self.breeze_locations",self.breeze_locations)
+                if not len((set(self.breeze_locations) - set(possible_breeze))): # All breezes makes sense
                     possible_pits_combinations.append(pit_combination)
         Pbreeze = 0
-        print("possible_pits_combinations",possible_pits_combinations)
+        # print("possible_pits_combinations",possible_pits_combinations)
         for pit_combination in possible_pits_combinations:
             Pbreeze += self.pit_prob ** len(pit_combination) * (1-self.pit_prob) ** (Nmax-len(pit_combination))
-        print("Pbreeze:", Pbreeze)
+        # print("Pbreeze:", round(Pbreeze,2))
         return Pbreeze, possible_pits_combinations, Nmax  
     
     def calc_pits_prob_in_loc(self, next_possible_step,Pbreeze,possible_pits_combinations,Nmax):        
-        print("calc prob for location:", next_possible_step)
+        # print("calc prob for location:", next_possible_step)
         Pbreeze_inter_pitinloc = 0
         for pit_combination in possible_pits_combinations:
             if next_possible_step in pit_combination: # exsit breeze with no possible breeze
                 Pbreeze_inter_pitinloc += self.pit_prob ** len(pit_combination) * (1-self.pit_prob) ** (Nmax-len(pit_combination))
-        print("pit prob in {} is {}".format(next_possible_step,Pbreeze_inter_pitinloc/Pbreeze))
+        # print("pit prob in {} is {}".format(next_possible_step,round(Pbreeze_inter_pitinloc/Pbreeze,2)))
         return Pbreeze_inter_pitinloc/Pbreeze
 
     
