@@ -30,6 +30,7 @@ class Agent:
         self.just_shot = False
         self.location_with_no_wumpus = []
         self.location_with_no_pit = []
+        self.possible_path = []
 
     
     def next_action(self,percept,agent_orientation):
@@ -66,10 +67,13 @@ class Agent:
             self.stench_locations.append(percept.agent_location)
             self.calc_wumpus_prob()
             if self.should_shoot():
-                # TODO: match orientation to shoot
-                self.has_arrow = False
-                self.just_shot = True
-                return "Shoot"
+                wumpus_orientation = self.wumpusLineOfFire(percept)    
+                if wumpus_orientation == agent_orientation:
+                    self.has_arrow = False
+                    self.just_shot = True
+                    return "Shoot"
+                else:
+                    return ShotestPath.which_turn(agent_orientation,wumpus_orientation)
         else:
             self.location_with_no_wumpus.extend(next_possible_steps)
             self.location_with_no_wumpus = list(set(self.location_with_no_wumpus))
@@ -109,7 +113,8 @@ class Agent:
 
         print("dying_prob:",dying_prob)
         print("min:",min(dying_prob.values()))
-        if min(dying_prob.values()) >= 0.5:
+        print("self.possible_path: ", self.possible_path)
+        if (min(dying_prob.values())) >= 0.5 or (len(self.possible_path) == 0 and percept.agent_location != (0,0)):
             graph = ShotestPath.safe_locations_to_graph(self.safe_locations)
             self.escape_plan = ShotestPath.bfs_escape_plan(graph,percept.agent_location,(0,0))
             print("Too risky - climbing out without gold")
@@ -120,6 +125,8 @@ class Agent:
             return ShotestPath.calc_next_step_escape(percept.agent_location,agent_orientation,self.escape_plan)
 
         next_possible_locations = [loc for loc,prob in dying_prob.items() if prob==0 and loc not in self.safe_locations]
+        self.possible_path.extend(next_possible_locations)
+        self.possible_path = list(set(self.possible_path) - set(self.safe_locations))
         if next_possible_locations:
             self.next_location = random.choice(next_possible_locations) 
         else:
@@ -171,6 +178,17 @@ class Agent:
             return False
         if min(self.Wumpus_prob.values()) > 0.3:
             return True
+
+    def wumpusLineOfFire(self,percept):
+        wumpus_most_prob_location = max(self.Wumpus_prob, key=self.Wumpus_prob.get)
+        if (percept.agent_location[0] == wumpus_most_prob_location[0]) and (percept.agent_location[1] > wumpus_most_prob_location[1]):
+            return "West"
+        if (percept.agent_location[0] == wumpus_most_prob_location[0]) and (percept.agent_location[1] < wumpus_most_prob_location[1]):      
+            return "East"    
+        if (percept.agent_location[0] > wumpus_most_prob_location[0]) and (percept.agent_location[1] == wumpus_most_prob_location[1]):
+            return "South"
+        if (percept.agent_location[0] < wumpus_most_prob_location[0]) and (percept.agent_location[1] == wumpus_most_prob_location[1]):     
+            return "North"
             
     def calc_wumpus_prob(self):
         possible_wumpus = set([(x,y) for x,y in list(product(range(GRIDWIDTH),range(GRIDHEIGHT))) if x or y ])

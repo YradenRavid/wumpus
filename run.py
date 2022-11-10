@@ -29,8 +29,8 @@ def RunGame():
     return total_reward
         
 if __name__ == "__main__":
-    # total_reward_sum = 0
-    # for i in range(10):        
-    #     total_reward_sum+= RunGame()
-    # print("Average Score:", total_reward_sum/10)
-    RunGame()
+    total_reward_sum = 0
+    for i in range(1000):        
+        total_reward_sum+= RunGame()
+    print("Average Score:", total_reward_sum/1000)
+    # RunGame()
