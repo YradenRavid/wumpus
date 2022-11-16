@@ -192,16 +192,12 @@ class Agent:
             
     def calc_wumpus_prob(self):
         possible_wumpus = set([(x,y) for x,y in list(product(range(GRIDWIDTH),range(GRIDHEIGHT))) if x or y ])
-        # print("stench_locations:",set(self.stench_locations))
         print("self.location_with_no_wumpus:",self.location_with_no_wumpus)
         for stench_loc in self.stench_locations:
             possible_wumpus1 = self.adjacentCells([stench_loc])
             possible_wumpus1 = set(possible_wumpus1) - set(self.location_with_no_wumpus)
             possible_wumpus = possible_wumpus.intersection(possible_wumpus1)
-        # print("possible_wumpus:",possible_wumpus)
         self.Wumpus_prob = {loc: 1/(len(possible_wumpus)) for loc in possible_wumpus}
-        # print("Wumpus_prob:")
-        # print(self.Wumpus_prob)
         if 1 in self.Wumpus_prob.values() and not self.Wumpus_loc:
             print("Wumpus location Found!")
             self.Wumpus_loc = next(iter(self.Wumpus_prob))
@@ -209,37 +205,27 @@ class Agent:
 
     def calc_breeze_prob(self):
         possible_pits = set()
-        # print("breeze_locations:",self.breeze_locations)
-        # print("location_with_no_pit:", self.location_with_no_pit)
         for breeze_loc in self.breeze_locations:
             possible_pits1 = self.adjacentCells([breeze_loc])
             possible_pits1 = set(possible_pits1) - set(self.location_with_no_pit)
             possible_pits = possible_pits.union(possible_pits1)
-        # print("possible_pits",possible_pits)
         possible_pits_combinations = []
         Nmax = len(possible_pits)
         for i in range(Nmax):
             for pit_combination in combinations(list(possible_pits),i+1):
-                # print("check validation for pit_combination:",pit_combination)
                 possible_breeze = self.find_neighbors(list(pit_combination))
-                # print("possible_breeze: {} for pit_combination".format(possible_breeze))
-                # print("self.breeze_locations",self.breeze_locations)
                 if not len((set(self.breeze_locations) - set(possible_breeze))): # All breezes makes sense
                     possible_pits_combinations.append(pit_combination)
         Pbreeze = 0
-        # print("possible_pits_combinations",possible_pits_combinations)
         for pit_combination in possible_pits_combinations:
             Pbreeze += self.pit_prob ** len(pit_combination) * (1-self.pit_prob) ** (Nmax-len(pit_combination))
-        # print("Pbreeze:", round(Pbreeze,2))
         return Pbreeze, possible_pits_combinations, Nmax  
     
     def calc_pits_prob_in_loc(self, next_possible_step,Pbreeze,possible_pits_combinations,Nmax):        
-        # print("calc prob for location:", next_possible_step)
         Pbreeze_inter_pitinloc = 0
         for pit_combination in possible_pits_combinations:
             if next_possible_step in pit_combination: # exsit breeze with no possible breeze
                 Pbreeze_inter_pitinloc += self.pit_prob ** len(pit_combination) * (1-self.pit_prob) ** (Nmax-len(pit_combination))
-        # print("pit prob in {} is {}".format(next_possible_step,round(Pbreeze_inter_pitinloc/Pbreeze,2)))
         return Pbreeze_inter_pitinloc/Pbreeze
 
     

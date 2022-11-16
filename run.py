@@ -1,6 +1,5 @@
-from Environment import EnvironmentState, Percept, AgentState
+from Environment import EnvironmentState, Percept
 from Agent import Agent
-import copy
 
 def RunGame():
     env = EnvironmentState()
